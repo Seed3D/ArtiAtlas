@@ -1,0 +1,7 @@
+# rebuilt texture-v2
+newmtl TT_checker_1024x1024_UV_GRID
+Ka 0.40000000 0.40000000 0.40000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.00000000 0.00000000 0.00000000
+Ns 1.00000000
+map_Kd ../images/texture_1.png

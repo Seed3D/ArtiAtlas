@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+message: "If you use ArtiBench or the ArtiAtlas dataset, please cite the ArtiAtlas paper."
+title: "ArtiAtlas: A Holistic Ecosystem for Diverse 3D Articulation Modeling"
+type: software
+authors:
+  - family-names: "Lu"
+    given-names: "Junzhe"
+    affiliation: "Tsinghua University; ByteDance Seed"
+    email: "junzhelu.thu@gmail.com"
+  - family-names: "Lin"
+    given-names: "Jing"
+    affiliation: "S-Lab, Nanyang Technological University; ByteDance Seed"
+    email: "jinglin.stu@gmail.com"
+  - family-names: "Cao"
+    given-names: "Ziang"
+    affiliation: "S-Lab, Nanyang Technological University"
+    email: "ziang001@e.ntu.edu.sg"
+  - family-names: "Wang"
+    given-names: "Haoqian"
+    affiliation: "Tsinghua University"
+    email: "wanghaoqian@tsinghua.edu.cn"
+  - family-names: "Liu"
+    given-names: "Ziwei"
+    affiliation: "S-Lab, Nanyang Technological University"
+    email: "zwliu.hust@gmail.com"
+  - family-names: "Zhang"
+    given-names: "Jianfeng"
+    affiliation: "ByteDance Seed"
+    email: "jf.zhang958@outlook.com"
+repository-code: "https://github.com/Seed3D/ArtiAtlas"
+url: "https://moonbow721.github.io/ArtiAtlas/"
+license: Apache-2.0
+preferred-citation:
+  type: conference-paper
+  title: "ArtiAtlas: A Holistic Ecosystem for Diverse 3D Articulation Modeling"
+  year: 2026
+  collection-title: "SIGGRAPH Asia 2026 Conference Papers"
+  collection-type: proceedings
+  conference:
+    name: "SIGGRAPH Asia 2026"
+  authors:
+    - family-names: "Lu"
+      given-names: "Junzhe"
+    - family-names: "Lin"
+      given-names: "Jing"
+    - family-names: "Cao"
+      given-names: "Ziang"
+    - family-names: "Wang"
+      given-names: "Haoqian"
+    - family-names: "Liu"
+      given-names: "Ziwei"
+    - family-names: "Zhang"
+      given-names: "Jianfeng"

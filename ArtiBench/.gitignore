@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+
+# Test / type / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Downloaded benchmark suites. Anchored to the repo root: an unanchored
+# pattern also matches results/comprehensive/, which must stay tracked.
+/data/
+/comprehensive/
+/in_the_wild/
+
+# Submissions under evaluation: one directory per object, as passed to
+# evaluate.sh --pred-dir. Anchored so examples/predictions/ stays tracked.
+/predictions/
+
+# Evaluation outputs
+/benchmark/
+/out/
+/outputs/
+/logs/
+*.log
+
+# Caches the evaluator writes next to your predictions. These land inside
+# examples/ when the smoke test or a judge run is pointed at it.
+canonical_rendering_images/
+part_colored_rendering_images/
+vlm_joint_highlight_frames/
+vlm_motion_frames/
+vlm_judge_logs/

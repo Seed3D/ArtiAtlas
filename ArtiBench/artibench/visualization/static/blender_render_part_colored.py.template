@@ -1,0 +1,491 @@
+# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
+# SPDX-License-Identifier: Apache-2.0
+"""Blender template: part-colored canonical views with proper camera fitting.
+
+Imports per-link OBJ files, assigns flat per-part colours, normalizes mesh
+to unit bounding box, uses 2D-projected occupancy camera fitting, and renders
+from multiple azimuths.  Supports both solid and translucent passes.
+
+Used by VLM-as-judge rendering pipeline.
+"""
+
+import json
+import math
+import os
+from pathlib import Path
+
+import bpy
+import numpy as np
+from mathutils import Vector
+
+manifest_path = Path("{{MANIFEST_PATH}}")
+state_path = Path("{{STATE_PATH}}")
+fit_margin = float({{FIT_MARGIN}})
+camera_r_override = {{CAMERA_R}}
+camera_elevation = float({{CAMERA_ELEVATION}})
+lens_mm = float({{LENS_MM}})
+sensor_width_mm = float({{SENSOR_WIDTH_MM}})
+target_z = float({{TARGET_Z}})
+res_x = int({{RES_X}})
+res_y = int({{RES_Y}})
+
+
+# ── Geometry helpers ────────────────────────────────────────────────────────
+
+def spherical_to_cartesian(radius, azimuth_deg, elevation_deg):
+    az = math.radians(azimuth_deg)
+    el = math.radians(elevation_deg)
+    return (
+        radius * math.cos(el) * math.cos(az),
+        radius * math.cos(el) * math.sin(az),
+        radius * math.sin(el),
+    )
+
+
+def object_bbox_corners(obj):
+    return np.array(
+        [list(obj.matrix_world @ Vector(c)) for c in obj.bound_box], dtype=np.float64
+    )
+
+
+def sample_object_vertices(obj, max_points=2048):
+    mesh = obj.data
+    n = len(mesh.vertices)
+    if n == 0:
+        return np.zeros((0, 3), dtype=np.float64)
+    coords = np.empty(n * 3, dtype=np.float64)
+    mesh.vertices.foreach_get("co", coords)
+    coords = coords.reshape(-1, 3)
+    mw = np.array(obj.matrix_world, dtype=np.float64)[:3, :3]
+    loc = np.array(obj.matrix_world.translation, dtype=np.float64)
+    world = coords @ mw.T + loc
+    if n > max_points:
+        idx = np.linspace(0, n - 1, max_points, dtype=np.int64)
+        world = world[idx]
+    return world
+
+
+def split_fit_margin(fm):
+    if fm <= 1.0:
+        return fm, 1.0
+    return 1.0, fm
+
+
+def required_camera_radius_for_points(pts, target, az, el, occ):
+    half_h = math.atan(sensor_width_mm / (2.0 * lens_mm))
+    half_v = math.atan((sensor_width_mm * res_y / res_x) / (2.0 * lens_mm))
+    tan_h, tan_v = math.tan(half_h), math.tan(half_v)
+    cam_dir = np.asarray(spherical_to_cartesian(1.0, az, el), dtype=np.float64)
+    cam_dir /= np.linalg.norm(cam_dir)
+    right = np.cross(cam_dir, np.array([0, 0, 1], dtype=np.float64))
+    rn = np.linalg.norm(right)
+    if rn < 1e-12:
+        right = np.array([1, 0, 0], dtype=np.float64)
+    else:
+        right /= rn
+    up = np.cross(right, cam_dir)
+    up /= max(np.linalg.norm(up), 1e-12)
+    rel = pts - target
+    a = rel @ cam_dir
+    x = rel @ right
+    y = rel @ up
+    r_h = float(np.max(a + np.abs(x) / (occ * tan_h)))
+    r_v = float(np.max(a + np.abs(y) / (occ * tan_v)))
+    return max(r_h, r_v, 0.1)
+
+
+def required_camera_radius_multi_azimuth(pts, target, azimuths, el, occ):
+    radii = []
+    for az in azimuths:
+        radii.append(required_camera_radius_for_points(pts, target, az, el, occ))
+    return float(max(radii)) if radii else 1.0
+
+
+# ── Scene helpers ───────────────────────────────────────────────────────────
+
+def clear_scene():
+    try:
+        bpy.ops.object.mode_set(mode="OBJECT")
+    except Exception:
+        pass
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete(use_global=False)
+
+
+def _hex_to_rgba(hex_str, alpha=1.0):
+    h = hex_str.lstrip("#")
+    return (
+        int(h[0:2], 16) / 255.0,
+        int(h[2:4], 16) / 255.0,
+        int(h[4:6], 16) / 255.0,
+        alpha,
+    )
+
+
+def _fix_normals(obj):
+    """Recalculate normals to face outward — prevents black patches."""
+    try:
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.normals_make_consistent(inside=False)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    except Exception:
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            pass
+
+
+def _make_flat_material(name, color_hex, alpha=1.0):
+    """Create a clean flat-colour material from scratch."""
+    rgba = _hex_to_rgba(color_hex, alpha=alpha)
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    mat.use_backface_culling = False
+
+    # Clear all nodes and rebuild from scratch to avoid any leftover texture links
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+
+    bsdf.inputs["Base Color"].default_value = rgba
+    bsdf.inputs["Metallic"].default_value = 0.5
+    bsdf.inputs["Roughness"].default_value = 0.7
+    bsdf.inputs["Alpha"].default_value = alpha
+
+    if alpha < 1.0:
+        mat.blend_method = "BLEND"
+    return mat
+
+
+def import_link_meshes(link_entries, palette, alpha=1.0):
+    """Import per-link OBJs, fix normals, and assign flat per-part colours.
+
+    Returns:
+        (all_objs, obj_entry_map) where obj_entry_map maps obj.name → entry index.
+    """
+    all_objs = []
+    obj_entry_map = {}
+    for entry_idx, entry in enumerate(link_entries):
+        filepath = entry["obj_path"]
+        link_idx = entry["link_index"]
+        before = {o.name for o in bpy.context.scene.objects}
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext == ".stl":
+            bpy.ops.wm.stl_import(filepath=filepath)
+        else:
+            bpy.ops.wm.obj_import(filepath=filepath)
+        new_objs = [
+            o for o in bpy.context.scene.objects
+            if o.name not in before and o.type == "MESH"
+        ]
+        if not new_objs:
+            continue
+
+        color_hex = palette[link_idx % len(palette)]
+        mat = _make_flat_material(f"PartColor_{link_idx}", color_hex, alpha)
+
+        for o in new_objs:
+            _fix_normals(o)
+            # Fully replace all materials and reset face material indices
+            o.data.materials.clear()
+            o.data.materials.append(mat)
+            # Reset all polygon material_index to 0 (our single flat material)
+            n_polys = len(o.data.polygons)
+            if n_polys > 0:
+                zeros = np.zeros(n_polys, dtype=np.int32)
+                o.data.polygons.foreach_set("material_index", zeros)
+                o.data.update()
+            all_objs.append(o)
+            obj_entry_map[o.name] = entry_idx
+    return all_objs, obj_entry_map
+
+
+def compute_static_norm(objects):
+    mins, maxs = [], []
+    for obj in objects:
+        bbox = object_bbox_corners(obj)
+        mins.append(bbox.min(axis=0))
+        maxs.append(bbox.max(axis=0))
+    g_min = np.min(np.vstack(mins), axis=0)
+    g_max = np.max(np.vstack(maxs), axis=0)
+    ranges = g_max - g_min
+    max_range = max(float(ranges[0]), float(ranges[1]), float(ranges[2]), 1e-8)
+    scale = 1.0 / max_range
+    center = 0.5 * (g_min + g_max)
+    translation = (-scale * center[0], -scale * center[1], -scale * center[2])
+    return scale, translation
+
+
+def apply_static_norm(objects, scale, translation):
+    for obj in objects:
+        obj.scale *= float(scale)
+        obj.location += Vector((translation[0], translation[1], translation[2]))
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in objects:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.transform_apply(location=True, rotation=False, scale=True)
+
+
+def collect_fit_points(objects, max_total=30000):
+    chunks = []
+    for obj in objects:
+        verts = sample_object_vertices(obj, max_points=2048)
+        if len(verts) > 0:
+            chunks.append(verts)
+    if not chunks:
+        raise RuntimeError("No geometry for camera fitting")
+    pts = np.concatenate(chunks, axis=0)
+    if len(pts) > max_total:
+        idx = np.linspace(0, len(pts) - 1, max_total, dtype=np.int64)
+        pts = pts[idx]
+    return pts
+
+
+def setup_scene(camera_r):
+    """Configure scene matching the reference blender_render_rgbd_first_frame.py style."""
+    scene = bpy.context.scene
+    scene.render.film_transparent = False  # white bg baked into RGB output
+    scene.render.resolution_x = res_x
+    scene.render.resolution_y = res_y
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.color_mode = "RGB"
+    scene.render.image_settings.file_format = "PNG"
+
+    # World: white background
+    world = scene.world or bpy.data.worlds.new("World")
+    scene.world = world
+    world.use_nodes = True
+    bg = world.node_tree.nodes.get("Background")
+    if bg:
+        bg.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+        bg.inputs["Strength"].default_value = 1.0
+
+    # Lights: 1 point + 1 area
+    bpy.ops.object.light_add(type="POINT", location=(1, 1, 2))
+    point_light = bpy.context.active_object
+    point_light.data.energy = 30
+
+    bpy.ops.object.light_add(type="AREA", location=(1, 1, 3))
+    area_light = bpy.context.active_object
+    area_light.data.energy = 180
+    area_light.rotation_euler = (math.pi, 0, 0)
+
+    # Camera
+    bpy.ops.object.camera_add()
+    cam = bpy.context.active_object
+    scene.camera = cam
+    cam.data.lens = lens_mm
+    cam.data.sensor_width = sensor_width_mm
+    cam.data.type = "PERSP"
+
+    # Renderer
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 64
+    scene.cycles.use_denoising = True
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "Medium Contrast"
+    try:
+        prefs = bpy.context.preferences.addons["cycles"].preferences
+        # ARTIBENCH_BLENDER_DEVICE lets a host force CPU rendering. Some nodes
+        # stall for minutes in Cycles GPU init on every invocation, never
+        # writing a kernel cache; CPU is far faster there for scenes this
+        # small. Unset/GPU keeps the CUDA path.
+        import os as _os
+        if _os.environ.get("ARTIBENCH_BLENDER_DEVICE", "").upper() == "CPU":
+            scene.cycles.device = "CPU"
+        else:
+            prefs.compute_device_type = "CUDA"
+            scene.cycles.device = "GPU"
+            prefs.get_devices()
+    except Exception:
+        scene.cycles.device = "CPU"
+    return cam
+
+
+def set_materials_alpha(objects, alpha=None, per_object_alpha=None):
+    """Update alpha on all PartColor materials for translucent pass.
+
+    Args:
+        alpha: Scalar fallback applied to all objects.
+        per_object_alpha: Optional dict {obj.name: alpha} for per-part values.
+    """
+    for obj in objects:
+        a = per_object_alpha.get(obj.name, alpha) if per_object_alpha else alpha
+        for slot in obj.material_slots:
+            mat = slot.material
+            if mat is None or not mat.use_nodes:
+                continue
+            mat.blend_method = "BLEND"
+            mat.shadow_method = "NONE"
+            mat.use_backface_culling = True
+            for node in mat.node_tree.nodes:
+                if node.bl_idname == "ShaderNodeBsdfPrincipled":
+                    node.inputs["Alpha"].default_value = a
+                    break
+
+
+def render_frame(cam, camera_r, target, azimuth, out_path):
+    cam.location = Vector(spherical_to_cartesian(camera_r, azimuth, camera_elevation))
+    direction = target - cam.location
+    cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    bpy.context.scene.render.filepath = out_path
+    bpy.ops.render.render(write_still=True)
+
+
+# ── Main ────────────────────────────────────────────────────────────────────
+
+def _run_one_job(
+    job,
+    *,
+    outer_palette,
+    outer_azimuths,
+    cached_camera_r,
+    cached_norm,
+):
+    """Render a single job (one mesh-set + its solid/translucent outputs).
+
+    Returns (state_dict, resolved_camera_r, resolved_norm). Any of `cached_*`
+    may be None; the job's own explicit overrides always take precedence.
+    """
+    link_entries = job["link_meshes"]
+    palette = job.get("palette", outer_palette)
+    azimuths = job.get("azimuths", outer_azimuths)
+    solid_paths = job["solid_paths"]
+    translucent_paths = job["translucent_paths"]
+    per_link_alpha = job.get("per_link_alpha", None)
+
+    clear_scene()
+
+    objs, obj_entry_map = import_link_meshes(link_entries, palette, alpha=1.0)
+    if not objs:
+        raise RuntimeError("No meshes imported")
+    norm_override = job.get("norm_override", None)
+    if norm_override is None:
+        norm_override = cached_norm
+    if norm_override is not None:
+        scale = float(norm_override["scale"])
+        translation = tuple(norm_override["translation"])
+    else:
+        scale, translation = compute_static_norm(objs)
+    apply_static_norm(objs, scale, translation)
+    fit_pts = collect_fit_points(objs)
+
+    target_world = np.array([0.0, 0.0, target_z], dtype=np.float64)
+    camera_r_local = job.get("camera_r_override", None)
+    if camera_r_local is None:
+        camera_r_local = cached_camera_r
+    fit_margin_local = float(job.get("fit_margin", fit_margin))
+    if camera_r_local is not None:
+        resolved_r = float(camera_r_local)
+    else:
+        occupancy, zoom = split_fit_margin(fit_margin_local)
+        resolved_r = required_camera_radius_multi_azimuth(
+            fit_pts, target_world, azimuths, camera_elevation, occupancy
+        )
+        resolved_r = float(resolved_r / zoom)
+
+    cam = setup_scene(resolved_r)
+    target = Vector((0.0, 0.0, target_z))
+
+    # Pass 1: solid
+    for azim, out_path in zip(azimuths, solid_paths):
+        render_frame(cam, resolved_r, target, azim, out_path)
+
+    # Pass 2: translucent (per-part alpha based on relative size)
+    if per_link_alpha:
+        per_obj_alpha = {
+            name: per_link_alpha[eidx]
+            for name, eidx in obj_entry_map.items()
+            if eidx < len(per_link_alpha)
+        }
+        set_materials_alpha(objs, alpha=0.35, per_object_alpha=per_obj_alpha)
+    else:
+        set_materials_alpha(objs, alpha=0.35)
+    scene = bpy.context.scene
+    scene.cycles.transparent_max_bounces = 64
+    scene.cycles.max_bounces = max(scene.cycles.max_bounces, 64)
+    for azim, out_path in zip(azimuths, translucent_paths):
+        render_frame(cam, resolved_r, target, azim, out_path)
+
+    state = {
+        "scale": float(scale),
+        "translation": list(translation),
+        "camera_r": float(resolved_r),
+    }
+    resolved_norm = {
+        "scale": float(scale),
+        "translation": list(translation),
+    }
+    return state, resolved_r, resolved_norm
+
+
+def main():
+    with manifest_path.open("r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    # Batch mode: manifest has a "jobs" list (each job = one mesh-set to render).
+    # Legacy mode: whole manifest is a single job (backward-compatible).
+    jobs = manifest.get("jobs")
+    if jobs is None:
+        single_mode = True
+        outer_palette = manifest.get("palette")
+        outer_azimuths = manifest.get("azimuths")
+        # Honor template-level camera_r_override for the single-job case.
+        seed_cached = (
+            float(camera_r_override) if camera_r_override is not None else None
+        )
+        jobs = [manifest]
+    else:
+        single_mode = False
+        outer_palette = manifest.get("palette")
+        outer_azimuths = manifest.get("azimuths")
+        seed_cached = (
+            float(camera_r_override) if camera_r_override is not None else None
+        )
+
+    states = []
+    cached_camera_r = seed_cached
+    cached_norm = None
+    for job in jobs:
+        state, resolved_r, resolved_norm = _run_one_job(
+            job,
+            outer_palette=outer_palette,
+            outer_azimuths=outer_azimuths,
+            cached_camera_r=cached_camera_r,
+            cached_norm=cached_norm,
+        )
+        states.append(state)
+        # Once any job computes (or is given) a camera_r / norm, reuse it for
+        # later jobs in the same invocation. Individual jobs can still override
+        # via "camera_r_override" / "norm_override" in their own dict.
+        if cached_camera_r is None:
+            cached_camera_r = resolved_r
+        if cached_norm is None:
+            cached_norm = resolved_norm
+
+    # Preserve the legacy state file shape for backward compatibility:
+    # single state in legacy mode; {"states": [...]} in batch mode.
+    if single_mode:
+        state_path.write_text(json.dumps(states[0], indent=2), encoding="utf-8")
+    else:
+        state_path.write_text(
+            json.dumps({"states": states}, indent=2), encoding="utf-8",
+        )
+
+
+def _entry():
+    try:
+        main()
+    except Exception as exc:
+        print(f"[blender_render_part_colored] failed: {exc}")
+        raise
+
+
+if __name__ == "__main__":
+    _entry()

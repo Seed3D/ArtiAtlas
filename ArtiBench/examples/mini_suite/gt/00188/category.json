@@ -1,0 +1,8 @@
+{
+  "status": "classified",
+  "L1": "Domestic",
+  "L2": "TrashCan",
+  "L3": null,
+  "confidence": "high",
+  "reasoning": "The image clearly shows a green wheeled recycling/waste bin, which matches the provided Chinese label '垃圾桶' (trash can). This corresponds directly to the TrashCan category in the Domestic domain."
+}

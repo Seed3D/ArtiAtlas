@@ -1,0 +1,37 @@
+[
+    {
+        "id": 0,
+        "name": "主体",
+        "objs": [
+            "textured_objs/part_007.obj",
+            "textured_objs/part_008.obj",
+            "textured_objs/part_009.obj",
+            "textured_objs/part_010.obj"
+        ]
+    },
+    {
+        "id": 1,
+        "name": "盖子",
+        "objs": [
+            "textured_objs/part_000.obj",
+            "textured_objs/part_001.obj",
+            "textured_objs/part_002.obj",
+            "textured_objs/part_003.obj",
+            "textured_objs/part_006.obj"
+        ]
+    },
+    {
+        "id": 2,
+        "name": "轮子1",
+        "objs": [
+            "textured_objs/part_004.obj"
+        ]
+    },
+    {
+        "id": 3,
+        "name": "轮子2",
+        "objs": [
+            "textured_objs/part_005.obj"
+        ]
+    }
+]

@@ -1,0 +1,4 @@
+{
+  "score": 5,
+  "analysis": "The reference image shows a wheeled trash bin with a hinged lid and two wheels. The 4-point budget is distributed as 2 points for the lid and 1 point for each wheel. Joint 1 represents the lid, with a horizontal revolute axis correctly placed exactly through the center of the hinge knuckles at the back. Joints 2 and 3 represent the wheels, with continuous axes correctly passing horizontally through the center of rotation for each wheel. All joint directions and positions are perfectly modeled."
+}

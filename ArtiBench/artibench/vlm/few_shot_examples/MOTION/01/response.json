@@ -1,0 +1,4 @@
+{
+  "score": 2,
+  "analysis": "The reference image shows a cabinet with a lower door whose vertical handle sits on the right side, indicating the hinge should be on the left edge and the door should open outward. The generated model does place a revolute joint near the correct edge, so the pivot location inferred from the fully-open frame is roughly reasonable. However, the door rotates INWARD into the cabinet body rather than outward. In the intermediate frames (33% and 67% open), the door panel clips severely through the main body interior. The wrong direction and severe interpenetration throughout most of the motion make the articulation physically implausible, even though the final pose shows a plausible pivot."
+}

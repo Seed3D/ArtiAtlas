@@ -1,0 +1,4 @@
+{
+  "score": 5,
+  "analysis": "The reference image shows a microwave oven whose only expected articulated part is the front door — a revolute joint hinged on the side opposite the handle. The control panel consists of flat buttons, which are not expected to be separate joints. The generated model correctly identifies one revolute joint for the door. The joint type and overall part completeness are both perfect."
+}

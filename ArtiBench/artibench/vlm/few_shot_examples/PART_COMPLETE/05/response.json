@@ -1,0 +1,4 @@
+{
+  "score": 3,
+  "analysis": "The reference image shows a front-loading washing machine with a main door, an internal rotating drum, a detergent drawer on the top left, a large control knob, and small push buttons — five expected functional regions. The generated model successfully captures the front door, the main control knob, and several small buttons. However, the internal drum is entirely missing (the internal views show no separate parts), and the detergent drawer is not segmented either and remains fused with the main body. With 2 of 5 functional regions missing, the model is substantially incomplete."
+}

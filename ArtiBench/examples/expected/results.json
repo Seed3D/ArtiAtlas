@@ -1,0 +1,22 @@
+{
+  "whole_mesh": {
+    "rest_overall_cd": 0.0002113063346769195
+  },
+  "part_meshes": {
+    "count_accuracy": 1.0,
+    "rest_per_part_cd": 0.0005372043716344403,
+    "rest_per_part_miou": 0.9472966920143646,
+    "rest_per_part_giou": 0.9471523760503611
+  },
+  "articulation": {
+    "type_accuracy": 1.0,
+    "axis_error_rad_mean": 0.0004139013430484829,
+    "origin_error_mean": 0.012261834282685288,
+    "limit_error_mean": 0.4316617948140165,
+    "success_rate": 0.8333333333333333,
+    "articulated_per_part_cd": 0.060797415250613086,
+    "articulated_per_part_miou": 0.8375322588917355,
+    "articulated_per_part_giou": 0.8135543498478592
+  },
+  "n_objects": 2
+}

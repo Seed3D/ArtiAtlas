@@ -1,0 +1,31 @@
+{
+  "format": "artibench_part_meshes_obj_v1",
+  "texture_dir": "textures",
+  "num_parts": 4,
+  "parts": [
+    {
+      "part_id": 0,
+      "obj_path": "part_000.obj",
+      "mtl_path": "part_000.mtl",
+      "num_instances": 4
+    },
+    {
+      "part_id": 1,
+      "obj_path": "part_001.obj",
+      "mtl_path": "part_001.mtl",
+      "num_instances": 5
+    },
+    {
+      "part_id": 2,
+      "obj_path": "part_002.obj",
+      "mtl_path": "part_002.mtl",
+      "num_instances": 1
+    },
+    {
+      "part_id": 3,
+      "obj_path": "part_003.obj",
+      "mtl_path": "part_003.mtl",
+      "num_instances": 1
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "release": "1.0.0",
+  "_comment": [
+    "Suite versions and capabilities. Suites are distributed as zip archives;",
+    "download links are in the README. `has_gt: false` means the suite has no 3D",
+    "ground truth by design, so the paired C1/C2 metrics are skipped for it."
+  ],
+  "suites": {
+    "category_rich": {
+      "version": "1.0.0",
+      "has_gt": true,
+      "note": "3D ground truth available: the full paired protocol (C1 joint parameters, C2 part geometry, alignment, VLM judge) plus self-quality. Drawn entirely from the openly-licensed portion of the ArtiAtlas dataset."
+    },
+    "in_the_wild": {
+      "version": "1.0.0",
+      "has_gt": false,
+      "note": "No 3D ground truth by design. Self-quality, image alignment and the VLM judge apply; C1/C2 are skipped automatically."
+    }
+  }
+}

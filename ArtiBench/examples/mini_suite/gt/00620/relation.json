@@ -1,0 +1,56 @@
+[
+    {
+        "name": "主体",
+        "objs": [
+            "textured_objs/part_001.obj",
+            "textured_objs/part_002.obj",
+            "textured_objs/part_003.obj",
+            "textured_objs/part_004.obj",
+            "textured_objs/part_005.obj",
+            "textured_objs/part_006.obj",
+            "textured_objs/part_007.obj",
+            "textured_objs/part_008.obj",
+            "textured_objs/part_009.obj",
+            "textured_objs/part_010.obj",
+            "textured_objs/part_011.obj",
+            "textured_objs/part_012.obj",
+            "textured_objs/part_013.obj",
+            "textured_objs/part_014.obj",
+            "textured_objs/part_015.obj",
+            "textured_objs/part_016.obj",
+            "textured_objs/part_017.obj",
+            "textured_objs/part_019.obj",
+            "textured_objs/part_020.obj",
+            "textured_objs/part_021.obj",
+            "textured_objs/part_022.obj",
+            "textured_objs/part_023.obj",
+            "textured_objs/part_027.obj",
+            "textured_objs/part_028.obj",
+            "textured_objs/part_029.obj",
+            "textured_objs/part_030.obj",
+            "textured_objs/part_031.obj",
+            "textured_objs/part_032.obj",
+            "textured_objs/part_033.obj",
+            "textured_objs/part_034.obj",
+            "textured_objs/part_035.obj"
+        ],
+        "id": 0
+    },
+    {
+        "name": "柜门1",
+        "objs": [
+            "textured_objs/part_018.obj",
+            "textured_objs/part_025.obj",
+            "textured_objs/part_026.obj"
+        ],
+        "id": 1
+    },
+    {
+        "name": "柜门2",
+        "objs": [
+            "textured_objs/part_000.obj",
+            "textured_objs/part_024.obj"
+        ],
+        "id": 2
+    }
+]

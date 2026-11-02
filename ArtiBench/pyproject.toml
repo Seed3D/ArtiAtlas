@@ -1,0 +1,71 @@
+[project]
+name = "artibench"
+version = "1.0.0"
+description = "A benchmark for articulated 3D object generation and reconstruction."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "third_party_licenses/*"]
+authors = [{ name = "ByteDance Ltd. and/or its affiliates" }]
+keywords = ["articulated-objects", "urdf", "3d", "benchmark", "evaluation"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Pure-PyPI dependencies only. Two more are required and are NOT installable
+# from PyPI; they compile against the torch already in the environment, so they
+# go in after this list, with build isolation off. See README "Install":
+#   pytorch3d  (paired C1/C2 chamfer distance)
+#   cubvh      (SDF overlap; CUDA)
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "trimesh>=4.0",
+    "torch>=2.0",
+    "tqdm>=4.60",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# Image/point-cloud alignment metrics: CLIP, CLIP-N, ULIP-2, Uni3D.
+alignment = [
+    "open_clip_torch>=2.24",
+    "timm>=0.9",
+    "easydict>=1.10",
+    "huggingface_hub>=0.23",
+]
+# VLM-as-judge.
+vlm = ["google-genai>=1.0"]
+# Optional visualization / mesh-repair helpers.
+viz = [
+    "open3d>=0.18",
+    "networkx>=3.0",
+    "matplotlib>=3.7",
+]
+all = ["artibench[alignment,vlm,viz]"]
+
+[project.scripts]
+artibench-data = "artibench.data:main"
+
+[project.urls]
+Homepage = "https://github.com/Seed3D/ArtiAtlas"
+Issues = "https://github.com/Seed3D/ArtiAtlas/issues"
+
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["artibench*"]
+
+# Runtime data files. Without these the Blender render templates and the
+# VLM judge's few-shot library are missing from every wheel and sdist, and
+# both paths fail only at run time.
+[tool.setuptools.package-data]
+artibench = [
+    "assets/RELEASE.json",
+    "visualization/static/*.py.template",
+    "vlm/few_shot_examples/**/*",
+]

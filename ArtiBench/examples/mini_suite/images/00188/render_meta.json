@@ -1,0 +1,33 @@
+{
+ "source_part_meshes": "part_meshes/00188",
+ "blender_bin": "blender-4.2.2-linux-x64",
+ "scale": 0.5,
+ "translation": [
+  -0.0,
+  -2.9802322387695312e-08,
+  -0.0
+ ],
+ "camera": {
+  "r": 1.7015282750949297,
+  "elevation": 25.0,
+  "azimuths": [
+   210.0,
+   250.0,
+   290.0,
+   330.0
+  ],
+  "lens_mm": 50.0,
+  "sensor_width_mm": 36.0
+ },
+ "resolution": [
+  518,
+  518
+ ],
+ "fit_margin": 1.0,
+ "fit_strategy": "2d_projected_bbox",
+ "fit_coordinate_frame": "blender_imported_mesh_axes",
+ "export_mask_exr": true,
+ "render_normal": false,
+ "num_views": 4,
+ "num_parts": 4
+}

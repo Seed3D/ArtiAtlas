@@ -1,0 +1,4 @@
+{
+  "score": 2,
+  "analysis": "The reference image shows a front-loading washing machine whose primary expected motion is the front door swinging open via a revolute joint hinged on the left side. While the generated door does rotate outward, its pivot axis is placed incorrectly: instead of sitting at the hinge edge, it is offset well inside the door, which causes the entire door to detach and float away from the machine body as it opens, creating a large unrealistic gap. The prominent knob is static (or rotating imperceptibly around its symmetry axis), and both the internal drum and the detergent drawer are missing from the motion sequence. The primary articulation is physically implausible due to the severe axis misalignment, and secondary articulations are absent."
+}

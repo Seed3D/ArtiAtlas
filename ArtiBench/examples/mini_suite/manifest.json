@@ -1,0 +1,33 @@
+{
+  "format": "artibench_prompt_suite_obj_v1",
+  "num_models": 2,
+  "num_views_per_model": 4,
+  "models": [
+    {
+      "model_name": "00188",
+      "model_dir": "gt/00188",
+      "image_dir": "images/00188",
+      "whole_mesh_path": "whole_mesh/00188/mesh.obj",
+      "part_mesh_dir": "part_meshes/00188",
+      "gt_pcl_dir": "cached_link_point_clouds/00188",
+      "n_parts": 4,
+      "prompt_view_index": 3,
+      "prompt_image_path": "images/00188/00188_prompt.png",
+      "prompt_mask_path": "images/00188/00188_prompt_mask.exr"
+    },
+    {
+      "model_name": "00620",
+      "model_dir": "gt/00620",
+      "image_dir": "images/00620",
+      "whole_mesh_path": "whole_mesh/00620/mesh.obj",
+      "part_mesh_dir": "part_meshes/00620",
+      "gt_pcl_dir": "cached_link_point_clouds/00620",
+      "n_parts": 3,
+      "prompt_view_index": 1,
+      "prompt_image_path": "images/00620/00620_prompt.png",
+      "prompt_mask_path": "images/00620/00620_prompt_mask.exr"
+    }
+  ],
+  "prompt_seed": 0,
+  "prompt_num_views": 4
+}

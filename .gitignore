@@ -1,0 +1,31 @@
+# Global rules only. ArtiBench/ keeps its own .gitignore, whose unanchored
+# patterns (outputs/, build/) are scoped to that directory — do not lift them up
+# here.
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Packed suites are distributed from Google Drive and model weights from Hugging
+# Face; their staging trees live outside this repository, in ../_hf and ../_local.
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.zip
+*.tar
+*.tar.zst
+/local_build/

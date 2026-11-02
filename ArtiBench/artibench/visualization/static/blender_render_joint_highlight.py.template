@@ -1,0 +1,654 @@
+# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
+# SPDX-License-Identifier: Apache-2.0
+"""Blender template: per-joint highlight rendering for VLM judge.
+
+For each joint, highlights parent link (blue) and child link (red), with a
+green emissive axis cylinder, while rendering all other links as translucent
+gray context.  Renders two azimuths per joint in a single Blender invocation.
+
+Used by VLM-as-judge joint-type and joint-axis evaluation.
+"""
+
+import json
+import math
+import os
+from pathlib import Path
+
+import bpy
+import numpy as np
+from mathutils import Vector
+
+manifest_path = Path("{{MANIFEST_PATH}}")
+state_path = Path("{{STATE_PATH}}")
+fit_margin = float({{FIT_MARGIN}})
+camera_elevation = float({{CAMERA_ELEVATION}})
+lens_mm = float({{LENS_MM}})
+sensor_width_mm = float({{SENSOR_WIDTH_MM}})
+target_z = float({{TARGET_Z}})
+res_x = int({{RES_X}})
+res_y = int({{RES_Y}})
+
+
+# ── Geometry helpers (shared with blender_render_part_colored.py.template) ──
+
+def spherical_to_cartesian(radius, azimuth_deg, elevation_deg):
+    az = math.radians(azimuth_deg)
+    el = math.radians(elevation_deg)
+    return (
+        radius * math.cos(el) * math.cos(az),
+        radius * math.cos(el) * math.sin(az),
+        radius * math.sin(el),
+    )
+
+
+def object_bbox_corners(obj):
+    return np.array(
+        [list(obj.matrix_world @ Vector(c)) for c in obj.bound_box], dtype=np.float64
+    )
+
+
+def sample_object_vertices(obj, max_points=2048):
+    mesh = obj.data
+    n = len(mesh.vertices)
+    if n == 0:
+        return np.zeros((0, 3), dtype=np.float64)
+    coords = np.empty(n * 3, dtype=np.float64)
+    mesh.vertices.foreach_get("co", coords)
+    coords = coords.reshape(-1, 3)
+    mw = np.array(obj.matrix_world, dtype=np.float64)[:3, :3]
+    loc = np.array(obj.matrix_world.translation, dtype=np.float64)
+    world = coords @ mw.T + loc
+    if n > max_points:
+        idx = np.linspace(0, n - 1, max_points, dtype=np.int64)
+        world = world[idx]
+    return world
+
+
+def split_fit_margin(fm):
+    if fm <= 1.0:
+        return fm, 1.0
+    return 1.0, fm
+
+
+def required_camera_radius_for_points(pts, target, az, el, occ):
+    half_h = math.atan(sensor_width_mm / (2.0 * lens_mm))
+    half_v = math.atan((sensor_width_mm * res_y / res_x) / (2.0 * lens_mm))
+    tan_h, tan_v = math.tan(half_h), math.tan(half_v)
+    cam_dir = np.asarray(spherical_to_cartesian(1.0, az, el), dtype=np.float64)
+    cam_dir /= np.linalg.norm(cam_dir)
+    right = np.cross(cam_dir, np.array([0, 0, 1], dtype=np.float64))
+    rn = np.linalg.norm(right)
+    if rn < 1e-12:
+        right = np.array([1, 0, 0], dtype=np.float64)
+    else:
+        right /= rn
+    up = np.cross(right, cam_dir)
+    up /= max(np.linalg.norm(up), 1e-12)
+    rel = pts - target
+    a = rel @ cam_dir
+    x = rel @ right
+    y = rel @ up
+    r_h = float(np.max(a + np.abs(x) / (occ * tan_h)))
+    r_v = float(np.max(a + np.abs(y) / (occ * tan_v)))
+    return max(r_h, r_v, 0.1)
+
+
+def required_camera_radius_multi_azimuth(pts, target, azimuths, el, occ):
+    radii = []
+    for az in azimuths:
+        radii.append(required_camera_radius_for_points(pts, target, az, el, occ))
+    return float(max(radii)) if radii else 1.0
+
+
+# ── Scene helpers ──────────────────────────────────────────────────────────
+
+def clear_scene():
+    try:
+        bpy.ops.object.mode_set(mode="OBJECT")
+    except Exception:
+        pass
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete(use_global=False)
+
+
+def _hex_to_rgba(hex_str, alpha=1.0):
+    h = hex_str.lstrip("#")
+    return (
+        int(h[0:2], 16) / 255.0,
+        int(h[2:4], 16) / 255.0,
+        int(h[4:6], 16) / 255.0,
+        alpha,
+    )
+
+
+def _fix_normals(obj):
+    """Fix normals for clean Fresnel ghost rendering.
+
+    1. Clear stale custom split-normals from imported meshes.
+    2. Add Edge Split modifier (30° threshold) to preserve hard edges
+       (e.g., 90° box corners) that would otherwise be smoothed away,
+       causing incorrect Fresnel evaluation and black-contour artifacts.
+    3. Recalculate normals to face outward.
+    """
+    try:
+        bpy.context.view_layer.objects.active = obj
+
+        if obj.data.has_custom_normals:
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+
+        mod = obj.modifiers.new(name="Fix_Shading", type='EDGE_SPLIT')
+        mod.split_angle = math.radians(30)
+
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.normals_make_consistent(inside=False)
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+    except Exception:
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            pass
+
+
+def _make_flat_material(name, color_hex, alpha=1.0):
+    rgba = _hex_to_rgba(color_hex, alpha=alpha)
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    mat.use_backface_culling = False
+
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+
+    bsdf.inputs["Base Color"].default_value = rgba
+    bsdf.inputs["Metallic"].default_value = 0.5
+    bsdf.inputs["Roughness"].default_value = 0.7
+    bsdf.inputs["Alpha"].default_value = alpha
+
+    if alpha < 1.0:
+        mat.blend_method = "BLEND"
+    return mat
+
+
+def _make_emissive_material(name, color_hex, emission_strength=2.0):
+    """Create a material with both diffuse color and emission for high visibility.
+
+    Used for the joint axis cylinder so it stands out against any background.
+    """
+    rgba = _hex_to_rgba(color_hex, alpha=1.0)
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    mat.use_backface_culling = False
+
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+
+    # Mix Principled BSDF (for shading/shadow) with Emission (for glow)
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = 0.5  # half diffuse, half emission
+
+    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    bsdf.inputs["Base Color"].default_value = rgba
+    bsdf.inputs["Metallic"].default_value = 0.3
+    bsdf.inputs["Roughness"].default_value = 0.4
+
+    emission = nt.nodes.new("ShaderNodeEmission")
+    emission.inputs["Color"].default_value = rgba
+    emission.inputs["Strength"].default_value = emission_strength
+
+    nt.links.new(bsdf.outputs["BSDF"], mix.inputs[1])
+    nt.links.new(emission.outputs["Emission"], mix.inputs[2])
+    nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    return mat
+
+
+def _make_ghost_material(name):
+    """Create a Fresnel edge-only translucent material (ArtiAtlas annotation convention).
+
+    Uses Fresnel (IOR=1.45) for edge detection, a base alpha floor (0.08),
+    and Mix(Transparent, Emission) instead of Principled BSDF.  Produces a
+    clean schematic ghost effect that reveals internal structure.
+    """
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    # Output
+    output = nodes.new(type="ShaderNodeOutputMaterial")
+    output.location = (800, 0)
+
+    # Mix: transparent <-> dark-gray emission
+    mix_shader = nodes.new(type="ShaderNodeMixShader")
+    mix_shader.location = (600, 0)
+
+    transparent = nodes.new(type="ShaderNodeBsdfTransparent")
+    transparent.location = (400, 100)
+    transparent.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+
+    emission = nodes.new(type="ShaderNodeEmission")
+    emission.location = (400, -100)
+    emission.inputs["Color"].default_value = (0.05, 0.05, 0.05, 1.0)
+    emission.inputs["Strength"].default_value = 1.0
+
+    # Factor: Fresnel (edge glow) + base alpha, masked by front-face
+    geo = nodes.new(type="ShaderNodeNewGeometry")
+    geo.location = (-400, 300)
+
+    fresnel = nodes.new(type="ShaderNodeFresnel")
+    fresnel.location = (-200, 400)
+    fresnel.inputs["IOR"].default_value = 1.45
+
+    is_front = nodes.new(type="ShaderNodeMath")
+    is_front.operation = "SUBTRACT"
+    is_front.location = (-100, 200)
+    is_front.inputs[0].default_value = 1.0
+
+    add_base = nodes.new(type="ShaderNodeMath")
+    add_base.operation = "ADD"
+    add_base.location = (0, 400)
+    add_base.inputs[1].default_value = 0.08  # base visibility floor
+
+    final_factor = nodes.new(type="ShaderNodeMath")
+    final_factor.operation = "MULTIPLY"
+    final_factor.location = (200, 300)
+
+    # Wire up
+    links.new(geo.outputs["Backfacing"], is_front.inputs[1])
+    links.new(fresnel.outputs["Fac"], add_base.inputs[0])
+    links.new(add_base.outputs["Value"], final_factor.inputs[0])
+    links.new(is_front.outputs["Value"], final_factor.inputs[1])
+    links.new(final_factor.outputs["Value"], mix_shader.inputs["Fac"])
+    links.new(transparent.outputs["BSDF"], mix_shader.inputs[1])
+    links.new(emission.outputs["Emission"], mix_shader.inputs[2])
+    links.new(mix_shader.outputs["Shader"], output.inputs["Surface"])
+
+    mat.blend_method = "BLEND"
+    mat.shadow_method = "NONE"
+    return mat
+
+
+def _assign_material(obj, mat):
+    """Replace all materials on a mesh object with a single material."""
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+    n_polys = len(obj.data.polygons)
+    if n_polys > 0:
+        zeros = np.zeros(n_polys, dtype=np.int32)
+        obj.data.polygons.foreach_set("material_index", zeros)
+        obj.data.update()
+
+
+def import_link_meshes(link_entries):
+    """Import per-link mesh files with ghost material (initial default).
+
+    Returns:
+        (all_objs, obj_entry_map) where obj_entry_map = {obj.name: entry_idx}.
+    """
+    ghost_mat = _make_ghost_material("DefaultGhost")
+    all_objs = []
+    obj_entry_map = {}
+    for entry_idx, entry in enumerate(link_entries):
+        filepath = entry["obj_path"]
+        before = {o.name for o in bpy.context.scene.objects}
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext == ".stl":
+            bpy.ops.wm.stl_import(filepath=filepath)
+        else:
+            bpy.ops.wm.obj_import(filepath=filepath)
+        new_objs = [
+            o for o in bpy.context.scene.objects
+            if o.name not in before and o.type == "MESH"
+        ]
+        if not new_objs:
+            continue
+
+        for o in new_objs:
+            _fix_normals(o)
+            _assign_material(o, ghost_mat)
+            all_objs.append(o)
+            obj_entry_map[o.name] = entry_idx
+    return all_objs, obj_entry_map
+
+
+def compute_static_norm(objects):
+    mins, maxs = [], []
+    for obj in objects:
+        bbox = object_bbox_corners(obj)
+        mins.append(bbox.min(axis=0))
+        maxs.append(bbox.max(axis=0))
+    g_min = np.min(np.vstack(mins), axis=0)
+    g_max = np.max(np.vstack(maxs), axis=0)
+    ranges = g_max - g_min
+    max_range = max(float(ranges[0]), float(ranges[1]), float(ranges[2]), 1e-8)
+    scale = 1.0 / max_range
+    center = 0.5 * (g_min + g_max)
+    translation = (-scale * center[0], -scale * center[1], -scale * center[2])
+    return scale, translation
+
+
+def apply_static_norm(objects, scale, translation):
+    for obj in objects:
+        obj.scale *= float(scale)
+        obj.location += Vector((translation[0], translation[1], translation[2]))
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in objects:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.transform_apply(location=True, rotation=False, scale=True)
+
+
+def collect_fit_points(objects, max_total=30000):
+    chunks = []
+    for obj in objects:
+        verts = sample_object_vertices(obj, max_points=2048)
+        if len(verts) > 0:
+            chunks.append(verts)
+    if not chunks:
+        raise RuntimeError("No geometry for camera fitting")
+    pts = np.concatenate(chunks, axis=0)
+    if len(pts) > max_total:
+        idx = np.linspace(0, len(pts) - 1, max_total, dtype=np.int64)
+        pts = pts[idx]
+    return pts
+
+
+def setup_scene(camera_r):
+    scene = bpy.context.scene
+    scene.render.film_transparent = False
+    scene.render.resolution_x = res_x
+    scene.render.resolution_y = res_y
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.color_mode = "RGB"
+    scene.render.image_settings.file_format = "PNG"
+
+    world = scene.world or bpy.data.worlds.new("World")
+    scene.world = world
+    world.use_nodes = True
+    bg = world.node_tree.nodes.get("Background")
+    if bg:
+        bg.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+        bg.inputs["Strength"].default_value = 1.0
+
+    bpy.ops.object.light_add(type="POINT", location=(1, 1, 2))
+    point_light = bpy.context.active_object
+    point_light.data.energy = 30
+
+    bpy.ops.object.light_add(type="AREA", location=(1, 1, 3))
+    area_light = bpy.context.active_object
+    area_light.data.energy = 180
+    area_light.rotation_euler = (math.pi, 0, 0)
+
+    bpy.ops.object.camera_add()
+    cam = bpy.context.active_object
+    scene.camera = cam
+    cam.data.lens = lens_mm
+    cam.data.sensor_width = sensor_width_mm
+    cam.data.type = "PERSP"
+
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 64
+    scene.cycles.use_denoising = True
+    scene.cycles.transparent_max_bounces = 128
+    scene.cycles.max_bounces = max(scene.cycles.max_bounces, 128)
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "Medium Contrast"
+    try:
+        prefs = bpy.context.preferences.addons["cycles"].preferences
+        # ARTIBENCH_BLENDER_DEVICE lets a host force CPU rendering. Some nodes
+        # stall for minutes in Cycles GPU init on every invocation, never
+        # writing a kernel cache; CPU is far faster there for scenes this
+        # small. Unset/GPU keeps the CUDA path.
+        import os as _os
+        if _os.environ.get("ARTIBENCH_BLENDER_DEVICE", "").upper() == "CPU":
+            scene.cycles.device = "CPU"
+        else:
+            prefs.compute_device_type = "CUDA"
+            scene.cycles.device = "GPU"
+            prefs.get_devices()
+    except Exception:
+        scene.cycles.device = "CPU"
+    return cam
+
+
+def render_frame(cam, camera_r, target, azimuth, out_path):
+    cam.location = Vector(spherical_to_cartesian(camera_r, azimuth, camera_elevation))
+    direction = target - cam.location
+    cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    bpy.context.scene.render.filepath = out_path
+    bpy.ops.render.render(write_still=True)
+
+
+# ── Joint highlight logic ──────────────────────────────────────────────────
+
+def assign_joint_highlight_materials(
+    all_objs, obj_entry_map, link_entries,
+    parent_link_name, child_link_name,
+    parent_color, child_color,
+    parent_alpha=1.0,
+):
+    """Re-assign materials: parent=colored, child=colored, rest=ghost.
+
+    parent_alpha < 1.0 makes the parent semi-transparent (for container joints
+    where the child is inside the parent body).
+    Context links use the Fresnel ghost material for clean see-through.
+    """
+    ghost_mat = _make_ghost_material("ContextGhost")
+    for obj in all_objs:
+        entry_idx = obj_entry_map[obj.name]
+        link_name = link_entries[entry_idx]["link_name"]
+
+        if link_name == parent_link_name:
+            mat = _make_flat_material(
+                f"Parent_{obj.name}", parent_color, alpha=parent_alpha
+            )
+        elif link_name == child_link_name:
+            mat = _make_flat_material(
+                f"Child_{obj.name}", child_color, alpha=1.0
+            )
+        else:
+            mat = ghost_mat
+
+        _assign_material(obj, mat)
+
+
+# ── Main ───────────────────────────────────────────────────────────────────
+
+def _run_phase(
+    phase,
+    *,
+    link_entries,
+    axis_entries,
+    outer_azimuths,
+    parent_color,
+    child_color,
+    axis_color,
+    fit_margin_default,
+):
+    """Run one phase: import meshes, apply norm, render each listed joint.
+
+    A phase has its own `norm_override`, `fit_margin`, `joints`, `azimuths`.
+    Each phase re-imports meshes so transforms can be applied fresh; the
+    Blender process startup cost is paid only once across all phases.
+    """
+    joints = phase["joints"]
+    azimuths = phase.get("azimuths", outer_azimuths)
+    phase_fit_margin = float(phase.get("fit_margin", fit_margin_default))
+    norm_override = phase.get("norm_override", None)
+    # A phase may carry its own link meshes (e.g. the same object exported at a
+    # different articulated state); it falls back to the manifest-level list.
+    link_entries = phase.get("link_meshes", link_entries)
+    fit_radius = float(phase.get("fit_radius", 0.8))
+    camera_r_override = phase.get("camera_r_override", None)
+
+    clear_scene()
+
+    objs, obj_entry_map = import_link_meshes(link_entries)
+    if not objs:
+        raise RuntimeError("No meshes imported")
+
+    # Import axis cylinders
+    axis_objs_by_joint = {}
+    all_axis_objs = []
+    axis_mat = _make_emissive_material("AxisGlow", axis_color, emission_strength=2.0)
+    for ax_entry in axis_entries:
+        ji = int(ax_entry["joint_index"])
+        filepath = ax_entry["obj_path"]
+        before = {o.name for o in bpy.context.scene.objects}
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext == ".stl":
+            bpy.ops.wm.stl_import(filepath=filepath)
+        else:
+            bpy.ops.wm.obj_import(filepath=filepath)
+        new_objs = [
+            o for o in bpy.context.scene.objects
+            if o.name not in before and o.type == "MESH"
+        ]
+        for o in new_objs:
+            _assign_material(o, axis_mat)
+            o.hide_render = True
+        axis_objs_by_joint.setdefault(ji, []).extend(new_objs)
+        all_axis_objs.extend(new_objs)
+
+    # Normalize geometry
+    if norm_override is not None:
+        scale = float(norm_override["scale"])
+        translation = tuple(norm_override["translation"])
+    else:
+        scale, translation = compute_static_norm(objs)
+    apply_static_norm(objs, scale, translation)
+    if all_axis_objs:
+        apply_static_norm(all_axis_objs, scale, translation)
+
+    # Fit camera. Zoom-inset mode (norm_override provided) frames the focused
+    # smaller link only — restrict fit points to the near-origin region.
+    if norm_override is not None:
+        chunks = []
+        for obj in objs:
+            verts = sample_object_vertices(obj, max_points=2048)
+            if len(verts) > 0:
+                dists = np.linalg.norm(verts, axis=1)
+                near = verts[dists < fit_radius]
+                if len(near) > 0:
+                    chunks.append(near)
+        fit_pts = (
+            np.concatenate(chunks, axis=0) if chunks else collect_fit_points(objs)
+        )
+    else:
+        fit_pts = collect_fit_points(objs)
+
+    target_world = np.array([0.0, 0.0, target_z], dtype=np.float64)
+    occupancy, zoom = split_fit_margin(phase_fit_margin)
+    resolved_r = required_camera_radius_multi_azimuth(
+        fit_pts, target_world, azimuths, camera_elevation, occupancy
+    )
+    resolved_r = float(resolved_r / zoom)
+    # A caller that renders several phases of the same object at different
+    # articulated states can pin the camera so framing stays identical.
+    if camera_r_override is not None:
+        resolved_r = float(camera_r_override)
+
+    cam = setup_scene(resolved_r)
+    target = Vector((0.0, 0.0, target_z))
+
+    # Render each joint
+    for joint_idx, joint_entry in enumerate(joints):
+        parent_name = joint_entry["parent_link_name"]
+        child_name = joint_entry["child_link_name"]
+        output_paths = joint_entry["output_paths"]
+        joint_azimuths = joint_entry.get("azimuths", azimuths)
+        p_alpha = float(joint_entry.get("parent_alpha", 1.0))
+
+        assign_joint_highlight_materials(
+            objs, obj_entry_map, link_entries,
+            parent_name, child_name,
+            parent_color, child_color,
+            parent_alpha=p_alpha,
+        )
+
+        # Show this joint's axis cylinder, hide others. `ji` in the zoom
+        # phase is remapped to 0 by the caller, so this lookup still works.
+        axis_joint_key = int(joint_entry.get("axis_joint_index", joint_idx))
+        for ji, ax_list in axis_objs_by_joint.items():
+            visible = (ji == axis_joint_key)
+            for ao in ax_list:
+                ao.hide_render = not visible
+
+        for azim, out_path in zip(joint_azimuths, output_paths):
+            render_frame(cam, resolved_r, target, azim, out_path)
+
+    return {
+        "scale": float(scale),
+        "translation": list(translation),
+        "camera_r": float(resolved_r),
+    }
+
+
+def main():
+    with manifest_path.open("r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    link_entries = manifest["link_meshes"]
+    axis_entries = manifest.get("axis_meshes", [])
+    parent_color = manifest.get("parent_color", "#3498db")
+    child_color = manifest.get("child_color", "#e74c3c")
+    axis_color = manifest.get("axis_color", "#00e676")
+    outer_azimuths = manifest.get("azimuths", [])
+
+    # Batch mode: manifest has a "phases" list. Legacy mode: top-level keys.
+    phases = manifest.get("phases")
+    if phases is None:
+        phases = [{
+            "norm_override": manifest.get("norm_override"),
+            "fit_margin": fit_margin,
+            "joints": manifest["joints"],
+            "azimuths": manifest.get("azimuths"),
+        }]
+        single_mode = True
+    else:
+        single_mode = False
+
+    states = []
+    for phase in phases:
+        # Reuse an earlier phase's fitted camera radius (identical framing
+        # across phases that differ only in articulated state).
+        src = phase.get("camera_r_from_phase")
+        if src is not None:
+            phase = dict(phase)
+            phase["camera_r_override"] = states[int(src)]["camera_r"]
+        state = _run_phase(
+            phase,
+            link_entries=link_entries,
+            axis_entries=axis_entries,
+            outer_azimuths=outer_azimuths,
+            parent_color=parent_color,
+            child_color=child_color,
+            axis_color=axis_color,
+            fit_margin_default=fit_margin,
+        )
+        states.append(state)
+
+    if single_mode:
+        state_path.write_text(json.dumps(states[0], indent=2), encoding="utf-8")
+    else:
+        state_path.write_text(
+            json.dumps({"states": states}, indent=2), encoding="utf-8",
+        )
+
+
+def _entry():
+    try:
+        main()
+    except Exception as exc:
+        print(f"[blender_render_joint_highlight] failed: {exc}")
+        raise
+
+
+if __name__ == "__main__":
+    _entry()

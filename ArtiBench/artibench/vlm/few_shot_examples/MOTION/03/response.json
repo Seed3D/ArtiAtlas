@@ -1,0 +1,4 @@
+{
+  "score": 3,
+  "analysis": "The reference image shows a base cabinet with a top drawer and a bottom door whose handle is on the upper edge, implying the hinge should be on the lower horizontal edge. The generated model articulates both parts. The drawer exhibits correct prismatic motion, sliding horizontally outward without clipping and properly including its inner container box. However, the bottom door is hinged on the WRONG side: the model places the axis on the left vertical edge rather than the lower horizontal edge, so the door swings sideways instead of dropping down. In addition, the door only opens to about 60 degrees, well short of the expected 90 degrees. Wrong axis placement combined with the incomplete range is a major motion error for the door."
+}

@@ -1,0 +1,9 @@
+{
+  "total_actuated": 3,
+  "type_summary": "2 continuous, 1 revolute",
+  "joints": [
+    {"type": "revolute"},
+    {"type": "continuous"},
+    {"type": "continuous"}
+  ]
+}

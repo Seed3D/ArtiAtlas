@@ -1,0 +1,4 @@
+{
+  "score": 5,
+  "analysis": "The reference image shows a base cabinet with one top drawer and one bottom door. The generated model correctly decomposes the object into three main parts: the cabinet body (cyan), the top drawer (yellow), and the bottom door (purple). The fixed handles are appropriately merged into the geometry of their respective panels. The drawer part correctly includes a container box behind the front panel. The parts assemble tightly with no incorrect splits or missing functional regions."
+}

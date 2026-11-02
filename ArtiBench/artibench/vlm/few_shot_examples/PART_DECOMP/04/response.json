@@ -1,0 +1,4 @@
+{
+  "score": 1,
+  "analysis": "The reference image shows a desk globe whose expected rigid parts are the spherical globe itself and its supporting stand / meridian arc. The generated model's 2-part decomposition has no correct structural boundary. The continuous spherical surface of the globe is cut into two irregular fragments along an arbitrary jagged line (visible in the external view as two colors covering what should be a single rigid sphere), and the base / stand is merged into one of those fragments rather than being a separate part. Neither the sphere-vs-stand boundary nor any internal attachment is captured. The decomposition is essentially random — score 1."
+}

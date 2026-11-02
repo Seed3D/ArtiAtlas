@@ -1,0 +1,4 @@
+{
+  "score": 3,
+  "analysis": "The reference image shows a wheeled trash bin with a top lid and two bottom wheels. The expected functional regions are the top lid and the wheels. The generated model fails to segment the top lid, leaving it entirely fused to the main body. The wheels are segmented as independent parts (visible as purple discs in the internal views), and the model additionally hallucinates a yellow front door panel that does not exist in the reference. Since the primary articulated part (the lid) is missing, about half of the expected functional regions are absent."
+}

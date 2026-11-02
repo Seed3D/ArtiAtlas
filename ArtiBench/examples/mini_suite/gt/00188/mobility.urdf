@@ -1,0 +1,168 @@
+<robot name="00188">
+  <link name="base_link"/>
+  <link name="link_0">
+    <visual>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_007.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_007.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_008.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_008.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_009.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_009.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_010.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.0 -0.0 -0.0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_010.obj"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_0" type="fixed">
+    <parent link="base_link"/>
+    <child link="link_0"/>
+    <origin xyz="0.0 0.0 0.0" rpy="1.570796326794897 0 -1.570796326794897"/>
+    <axis xyz="0.0 1.0 0.0"/>
+  </joint>
+  <link name="link_1">
+    <visual>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_000.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_000.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_001.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_001.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_002.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_002.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_003.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_003.obj"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_006.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.3054460287094116 -0.7371997833251953 0.6817128658294678" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_006.obj"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_1" type="revolute">
+    <parent link="link_0"/>
+    <child link="link_1"/>
+    <origin xyz="-0.3054460287094116 0.7371997833251953 -0.6817128658294678" rpy="0 0 0"/>
+    <axis xyz="-1.0 0.0 0.0"/>
+    <limit lower="0.0" upper="4.281292442089203" effort="10.0" velocity="1.0"/>
+  </joint>
+  <link name="link_2">
+    <visual>
+      <origin xyz="0.5822116136550903 0.7957156300544739 0.31604480743408203" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_004.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.5822116136550903 0.7957156300544739 0.31604480743408203" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_004.obj"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_2" type="continuous">
+    <parent link="link_0"/>
+    <child link="link_2"/>
+    <origin xyz="-0.5822116136550903 -0.7957156300544739 -0.31604480743408203" rpy="0 0 0"/>
+    <axis xyz="1.0 0.0 0.0"/>
+  </joint>
+  <link name="link_3">
+    <visual>
+      <origin xyz="-0.5822116136550903 0.7958641052246094 0.31599244475364685" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_005.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.5822116136550903 0.7958641052246094 0.31599244475364685" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/part_005.obj"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_3" type="continuous">
+    <parent link="link_0"/>
+    <child link="link_3"/>
+    <origin xyz="0.5822116136550903 -0.7958641052246094 -0.31599244475364685" rpy="0 0 0"/>
+    <axis xyz="1.0 0.0 0.0"/>
+  </joint>
+</robot>

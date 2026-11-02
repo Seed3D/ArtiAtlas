@@ -1,0 +1,4 @@
+{
+  "score": 4,
+  "analysis": "The reference image shows a front-loading washing machine with a round door, a detergent drawer, a large control knob, small push buttons, and an internal drum. The generated model correctly separates the front door, the main control knob, and several small buttons, with tight assembly and correct boundaries for the present parts. However, two functional regions from the reference are not segmented: the internal drum and the detergent drawer are both merged into the main body mesh. Since this dimension focuses on decomposition quality, a single missing-part penalty is applied."
+}

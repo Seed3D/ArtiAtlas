@@ -1,0 +1,4 @@
+{
+  "image_kind": "joint",
+  "note": "Illustrative rubric anchor for the VLM judge. The method that produced this URDF is deliberately not recorded: these examples carry critical quality judgments and must not be read as an evaluation of any named system."
+}

@@ -1,0 +1,4 @@
+{
+  "score": 4,
+  "analysis": "The reference image shows a front-loading washing machine. The four highest-importance joints shown by the model are the main door (revolute), the program selector knob (continuous), and two small push buttons (prismatic) — all three joint type labels are individually correct. However, for a washing machine the most important expected articulations include the internal drum (continuous) and the detergent drawer (prismatic), both of which should rank well above small panel buttons by size and functional importance. Neither appears among the top-4 shown joints, which strongly implies they are missing from the model entirely rather than merely downranked. With correct types on every shown joint but one significant expected joint likely missing, a single-point deduction is applied — score 4."
+}

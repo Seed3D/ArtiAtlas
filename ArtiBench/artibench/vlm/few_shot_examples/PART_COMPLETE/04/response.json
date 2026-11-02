@@ -1,0 +1,4 @@
+{
+  "score": 1,
+  "analysis": "The reference image shows a desk globe. The expected functional regions are the spherical globe body and its supporting stand or base — two distinct components. The generated model's decomposition contains no correctly captured functional region. The sphere is split into two arbitrary jagged fragments with no clear functional meaning, and the base is fused with one of those fragments rather than being isolated as its own part. Neither the sphere nor the stand is present as an independent, coherent functional region — score 1."
+}

@@ -1,0 +1,4 @@
+{
+  "score": 4,
+  "analysis": "The reference image shows a cabinet with a single lower door whose vertical handle on the right indicates a left-hinged revolute joint. Since there is only one expected joint, it receives the full 4-point budget (direction 2, position 2). The model correctly predicts the vertical direction of the hinge axis (2/2 on direction). For position, the side camera view reveals that the axis floats just beside the seam rather than passing precisely through the hinge line. This is a slight positional offset on the correct side, losing roughly half of the position sub-budget (~1 out of 2). Total deduction is about one point."
+}

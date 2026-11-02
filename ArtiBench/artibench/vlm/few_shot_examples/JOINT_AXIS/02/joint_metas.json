@@ -1,0 +1,10 @@
+{
+  "total_actuated": 4,
+  "type_summary": "3 prismatic, 1 revolute",
+  "joints": [
+    {"type": "prismatic"},
+    {"type": "prismatic"},
+    {"type": "revolute"},
+    {"type": "prismatic"}
+  ]
+}

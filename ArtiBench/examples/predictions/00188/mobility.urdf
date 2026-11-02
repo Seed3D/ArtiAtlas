@@ -1,0 +1,114 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="00188">
+  <link name="base" />
+  <link name="link_0">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_0.obj" />
+      </geometry>
+      <material name="material_0">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_0.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <link name="link_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_1.obj" />
+      </geometry>
+      <material name="material_1">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_1.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <link name="link_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_2.obj" />
+      </geometry>
+      <material name="material_2">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_2.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <link name="link_3">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_3.obj" />
+      </geometry>
+      <material name="material_3">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_3.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <joint name="joint_0_1" type="revolute">
+    <parent link="link_0" />
+    <child link="link_1" />
+    <origin xyz="0.000186 0.785657 -0.676364" rpy="0 0 0" />
+    <axis xyz="-0.999999 0.000285 0.000057" />
+    <limit lower="0.030160" upper="1.806370" effort="1000" velocity="100" />
+  </joint>
+  <joint name="joint_0_2" type="revolute">
+    <parent link="link_0" />
+    <child link="link_2" />
+    <origin xyz="-0.000579 -0.808975 -0.327589" rpy="0 0 0" />
+    <axis xyz="-0.999999 0.000525 0.000472" />
+    <limit lower="-6.302114" upper="0.024858" effort="1000" velocity="100" />
+  </joint>
+  <joint name="joint_0_3" type="revolute">
+    <parent link="link_0" />
+    <child link="link_3" />
+    <origin xyz="0.000030 -0.812054 -0.314053" rpy="0 0 0" />
+    <axis xyz="-0.999999 0.000078 -0.000298" />
+    <limit lower="-6.317300" upper="-0.036621" effort="1000" velocity="100" />
+  </joint>
+  <joint name="joint_base_link_0" type="fixed">
+    <origin rpy="1.570796326794897 0 -1.570796326794897" xyz="0 0 0" />
+    <child link="link_0" />
+    <parent link="base" />
+  </joint>
+</robot>

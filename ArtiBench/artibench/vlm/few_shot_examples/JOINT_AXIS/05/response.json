@@ -1,0 +1,4 @@
+{
+  "score": 4,
+  "analysis": "The reference image shows a front-loading washing machine with a main door as the dominant joint and smaller joints for the knob and buttons. I allocate the 4-point budget as: main door = 2, knob = 1, two buttons = 0.5 each. J1 is the revolute door: the vertical axis direction is correct (1/1 on direction), but on closer inspection the axis is not precisely on the hinge seam — it sits slightly inside the door rather than exactly on the edge, losing roughly half the position sub-budget. J2 is the continuous knob: the direction is roughly perpendicular to the panel surface (0.5/0.5), but the zoom-in inset reveals that the green axis does not pass through the knob center — it is visibly offset to the side, losing the full position sub-budget. J3 and J4 are the prismatic buttons: direction along the panel normal and origin centered on each button, both correct (0.5/0.5 each). Total deduction is about one point."
+}

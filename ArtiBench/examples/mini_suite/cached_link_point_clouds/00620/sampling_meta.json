@@ -1,0 +1,11 @@
+{
+ "format": "artibench_gt_link_pcls_v1",
+ "n_points_per_link": 8192,
+ "links": [
+  "link_0",
+  "link_1",
+  "link_2"
+ ],
+ "n_links": 3,
+ "urdf_path": "gt/00620/mobility.urdf"
+}

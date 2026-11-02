@@ -1,0 +1,4 @@
+{
+  "score": 3,
+  "analysis": "The reference image shows a base cabinet with a top drawer and a bottom door whose handle is on the upper edge, so the hinge should be on the lower horizontal edge. The two joints are equally important, so the 4-point budget splits into 2 points per joint (direction 1, position 1). J1 is the prismatic drawer: the axis points correctly outward from the front face with a valid position along the sliding path — full credit (2/2). J2 is the revolute bottom door: however, the model places the axis on the left vertical edge rather than the lower horizontal edge. The direction is vertical instead of horizontal (losing the full direction sub-budget, -1) and the position is on the wrong edge (losing the full position sub-budget, -1). J2 contributes 0 of its 2 points. Total deduction is 2 points on the 4-point budget."
+}

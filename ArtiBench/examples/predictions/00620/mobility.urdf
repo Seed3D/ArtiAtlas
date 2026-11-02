@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="00620">
+  <link name="base" />
+  <link name="link_0">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_0.obj" />
+      </geometry>
+      <material name="material_0">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_0.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <link name="link_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_1.obj" />
+      </geometry>
+      <material name="material_1">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_1.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <link name="link_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_2.obj" />
+      </geometry>
+      <material name="material_2">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="textured_objs/part_2.obj" />
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
+    </inertial>
+  </link>
+  <joint name="joint_2_0" type="revolute">
+    <parent link="link_2" />
+    <child link="link_0" />
+    <origin xyz="-0.719526 -0.000028 0.391614" rpy="0 0 0" />
+    <axis xyz="-0.000131 0.999999 -0.000169" />
+    <limit lower="-1.599683" upper="-0.014166" effort="1000" velocity="100" />
+  </joint>
+  <joint name="joint_2_1" type="revolute">
+    <parent link="link_2" />
+    <child link="link_1" />
+    <origin xyz="0.718371 -0.000193 0.394973" rpy="0 0 0" />
+    <axis xyz="0.000457 0.999999 -0.000344" />
+    <limit lower="-0.003004" upper="1.579661" effort="1000" velocity="100" />
+  </joint>
+  <joint name="joint_base_link_2" type="fixed">
+    <origin rpy="1.570796326794897 0 -1.570796326794897" xyz="0 0 0" />
+    <child link="link_2" />
+    <parent link="base" />
+  </joint>
+</robot>

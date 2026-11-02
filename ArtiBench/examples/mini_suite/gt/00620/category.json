@@ -1,0 +1,8 @@
+{
+  "status": "classified",
+  "L1": "Domestic",
+  "L2": "Cabinet",
+  "L3": "FloorCabinet",
+  "confidence": "high",
+  "reasoning": "The object is a typical freestanding storage cabinet that rests directly on the floor. It has double doors and a lock, fitting the general description of a floor cabinet."
+}
